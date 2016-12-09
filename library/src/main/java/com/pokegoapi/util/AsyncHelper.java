@@ -15,6 +15,8 @@
 
 package com.pokegoapi.util;
 
+import java.util.concurrent.TimeoutException;
+
 import com.pokegoapi.exceptions.AsyncLoginFailedException;
 import com.pokegoapi.exceptions.AsyncPokemonGoException;
 import com.pokegoapi.exceptions.AsyncRemoteServerException;
@@ -43,7 +45,15 @@ public class AsyncHelper {
 			if (e.getCause() instanceof AsyncRemoteServerException) {
 				throw new RemoteServerException(e.getMessage(), e.getCause());
 			}
-			throw new AsyncPokemonGoException("Unknown exception occurred. ", e);
+			if(e.getCause() instanceof LoginFailedException || e.getCause() instanceof RemoteServerException){
+				throw e;
+			}
+				
+			if(e.getCause() instanceof TimeoutException){
+				throw new AsyncPokemonGoException("Check auth required", e);
+			} else{
+				throw new AsyncPokemonGoException("Unknown exception occurred. ", e);
+			}
 		}
 	}
 
@@ -66,6 +76,10 @@ public class AsyncHelper {
 			if (e.getCause() instanceof AsyncRemoteServerException) {
 				throw new RemoteServerException(e.getMessage(), e.getCause());
 			}
+			if(e.getCause() instanceof LoginFailedException || e.getCause() instanceof RemoteServerException){
+				throw e;
+			}
+
 			throw new AsyncPokemonGoException("Unknown exception occurred. ", e);
 		}
 	}

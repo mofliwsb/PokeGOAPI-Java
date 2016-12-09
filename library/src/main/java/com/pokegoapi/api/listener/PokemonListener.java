@@ -36,4 +36,7 @@ public interface PokemonListener extends Listener {
 	 * @return true to abort the capture and false to retry
 	 */
 	boolean onCatchEscape(PokemonGo api, CatchablePokemon pokemon, Pokeball pokeball, int throwCount);
+	
+	void onCatchAttempted(PokemonGo api, CatchablePokemon pokemon, Pokeball pokeball, int throwCount);
+	
 }

@@ -79,7 +79,7 @@ public class CatchOptions {
 		this.maxPokeballs = 1;
 		this.probability = 0.50;
 		this.normalizedHitPosition = 1.0;
-		this.normalizedReticleSize = 1.95 + Math.random() * 0.05;
+		this.normalizedReticleSize = 0.85 + Math.random() * 0.15;
 		this.spinModifier = 0.85 + Math.random() * 0.15;
 	}
 	
@@ -154,8 +154,10 @@ public class CatchOptions {
 	public Pokeball getItemBall(double encounterProbability) throws LoginFailedException,
 						RemoteServerException, NoSuchItemException {
 		if (encounterProbability >= probability) {
+			pokeBall = Pokeball.ULTRABALL;
 			useBestPokeball = false;
 		} else {
+			pokeBall = Pokeball.POKEBALL;
 			useBestPokeball = true;
 		}
 		return getItemBall();

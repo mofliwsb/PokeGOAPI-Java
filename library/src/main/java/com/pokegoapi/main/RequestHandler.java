@@ -137,7 +137,8 @@ public class RequestHandler implements Runnable {
 				}
 				return resultMap.remove(asyncServerRequest.getId());
 			}
-		});
+		},
+		2, TimeUnit.MINUTES);			// force times out after 2 mins
 	}
 
 	/**
@@ -147,7 +148,7 @@ public class RequestHandler implements Runnable {
 	 * @throws RemoteServerException the remote server exception
 	 * @throws LoginFailedException  the login failed exception
 	 */
-	public void sendServerRequests(ServerRequest... serverRequests) throws RemoteServerException, LoginFailedException {
+	public void sendServerRequests(ServerRequest... serverRequests) throws RemoteServerException, LoginFailedException{
 		List<Observable<ByteString>> observables = new ArrayList<>(serverRequests.length);
 		for (ServerRequest request : serverRequests) {
 			AsyncServerRequest asyncServerRequest = new AsyncServerRequest(request.getType(), request.getRequest());

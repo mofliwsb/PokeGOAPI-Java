@@ -254,7 +254,29 @@ public class CatchablePokemon implements MapPoint {
 					}
 				});
 	}
-
+		
+	class PokeballSelector {
+		private EncounterResult encounter;
+		private CatchOptions options;
+		
+		public PokeballSelector(EncounterResult encounter, CatchOptions options){
+			this.encounter = encounter;
+			this.options = options;
+		}
+		
+		public Pokeball selectNext() throws LoginFailedException, RemoteServerException, NoSuchItemException{
+			api.getInventories().updateInventories(true);
+			if(encounter!=null)
+				return options.getItemBall(encounter.getCaptureProbability().getCaptureProbability(0));
+			else{
+				options.usePokeball(Pokeball.ULTRABALL);
+				options.useBestBall(false);
+				return options.getItemBall();
+			}
+		}
+	}
+	
+	
 	/**
 	 * Tries to catch a pokemon (using defined {@link CatchOptions}).
 	 *
@@ -273,7 +295,7 @@ public class CatchablePokemon implements MapPoint {
 		return catchPokemon(options.getNormalizedHitPosition(),
 				options.getNormalizedReticleSize(),
 				options.getSpinModifier(),
-				options.getItemBall(),
+				new PokeballSelector(null, options),
 				options.getMaxPokeballs(),
 				options.getRazzberries());
 	}
@@ -304,7 +326,7 @@ public class CatchablePokemon implements MapPoint {
 		return catchPokemon(options.getNormalizedHitPosition(),
 				options.getNormalizedReticleSize(),
 				options.getSpinModifier(),
-				options.getItemBall(probability),
+				new PokeballSelector(encounter, options),
 				options.getMaxPokeballs(),
 				options.getRazzberries());
 	}
@@ -336,12 +358,13 @@ public class CatchablePokemon implements MapPoint {
 	 * @return CatchResult of resulted try to catch pokemon
 	 * @throws LoginFailedException  if failed to login
 	 * @throws RemoteServerException if the server failed to respond
+	 * @throws NoSuchItemException 
 	 */
 	public CatchResult catchPokemon(double normalizedHitPosition,
-									double normalizedReticleSize, double spinModifier, Pokeball type,
-									int amount) throws LoginFailedException, RemoteServerException {
+									double normalizedReticleSize, double spinModifier, PokeballSelector ballSelector,
+									int amount) throws LoginFailedException, RemoteServerException, NoSuchItemException {
 
-		return catchPokemon(normalizedHitPosition, normalizedReticleSize, spinModifier, type, amount, 0);
+		return catchPokemon(normalizedHitPosition, normalizedReticleSize, spinModifier, ballSelector, amount, 0);
 	}
 
 	/**
@@ -442,11 +465,12 @@ public class CatchablePokemon implements MapPoint {
 	 * @return CatchResult of resulted try to catch pokemon
 	 * @throws LoginFailedException  if failed to login
 	 * @throws RemoteServerException if the server failed to respond
+	 * @throws NoSuchItemException 
 	 */
 	public CatchResult catchPokemon(double normalizedHitPosition,
-									double normalizedReticleSize, double spinModifier, Pokeball type,
+									double normalizedReticleSize, double spinModifier, PokeballSelector ballSelector,
 									int amount, int razberriesLimit)
-			throws LoginFailedException, RemoteServerException {
+			throws LoginFailedException, RemoteServerException, NoSuchItemException {
 
 		Item razzberriesInventory = api.getInventories().getItemBag().getItem(ItemId.ITEM_RAZZ_BERRY);
 		int razzberriesCountInventory = razzberriesInventory.getCount();
@@ -467,13 +491,20 @@ public class CatchablePokemon implements MapPoint {
 
 				razzberriesInventory.setCount(razzberriesCountInventory);
 			}
+			
+			Pokeball ball = ballSelector.selectNext();
 			result = AsyncHelper.toBlocking(catchPokemonAsync(normalizedHitPosition,
-					normalizedReticleSize, spinModifier, type));
+					normalizedReticleSize, spinModifier, ball));
 			if (result == null) {
 				Log.wtf(TAG, "Got a null result after catch attempt");
 				break;
 			}
 
+			List<PokemonListener> listeners = api.getListeners(PokemonListener.class);
+			for (PokemonListener listener : listeners) {
+				listener.onCatchAttempted(api, this, ball, numThrows);
+			}
+			
 			// continue for the following cases:
 			// CatchStatus.CATCH_ESCAPE
 			// CatchStatus.CATCH_MISSED
@@ -497,9 +528,9 @@ public class CatchablePokemon implements MapPoint {
 
 			boolean abort = false;
 
-			List<PokemonListener> listeners = api.getListeners(PokemonListener.class);
+			listeners = api.getListeners(PokemonListener.class);
 			for (PokemonListener listener : listeners) {
-				abort |= listener.onCatchEscape(api, this, type, numThrows);
+				abort |= listener.onCatchEscape(api, this, ball, numThrows);
 			}
 
 			if (abort) {
